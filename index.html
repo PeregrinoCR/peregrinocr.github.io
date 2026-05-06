@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Panel de gestión de renovaciones de servicios">
+    <title>Control de Renovaciones</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+</head>
+
+<body>
+    <!-- ===== LOGIN SCREEN ===== -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-card">
+            <div class="login-logo">
+                <span class="login-logo-icon">⟳</sp <h1>Control de Renovaciones</h1>
+                    <p class="login-subtitle">Gestión de servicios y renovaciones</p>
+            </div>
+            <form id="formLogin" class="auth-form">
+                <div class="form-group">
+                    <label for="loginUser">👤 Usuario</label>
+                    <input type="text" id="loginUser" class="input-field" placeholder="Ingrese su usuario" required
+                        autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="loginPass">🔒 Contraseña</label>
+                    <div class="pass-wrapper">
+                        <input type="password" id="loginPass" class="input-field" placeholder="Ingrese su contraseña"
+                            required autocomplete="current-password">
+                        <button type="button" class="btn-toggle-pass"
+                            onclick="togglePass('loginPass',this)">👁️</button>
+                    </div>
+                </div>
+                <div class="auth-error" id="loginError"></div>
+                <button type="submit" class="btn-primary btn-auth">Iniciar Sesión</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===== MAIN APP (hidden until login) ===== -->
+    <div id="appContainer" style="display:none">
+        <header class="app-header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">⟳</span>
+                    <h1>Control de Renovaciones</h1>
+                </div>
+                <div class="header-actions">
+                    <div class="exchange-rate-badge" id="exchangeBadge" title="Tipo de cambio - Hacienda CR">
+                        <span class="exchange-flag">🇨🇷</span>
+                        <div class="exchange-info">
+                            <span class="exchange-label">USD/CRC</span>
+                            <span class="exchange-value" id="exchangeRate">Cargando...</span>
+                        </div>
+                        <button class="btn-refresh-rate" id="btnRefreshRate" title="Actualizar">↻</button>
+                    </div>
+                    <nav class="header-nav">
+                        <button class="nav-tab active" data-tab="servicios">📋 Servicios</button>
+                        <button class="nav-tab" data-tab="clientes">👥 Clientes</button>
+                        <button class="nav-tab" data-tab="productos">📦 Productos</button>
+                        <button class="nav-tab" data-tab="alertas">🔔 Alertas <span class="alert-count" id="alertCount"
+                                style="display:none">0</span></button>
+                        <button class="nav-tab" data-tab="config">⚙️</button>
+                    </nav>
+                    <div class="user-menu">
+                        <span class="user-badge" id="userBadge" title="Usuario activo">👤</span>
+                        <button class="btn-change-pass" id="btnChangePass" title="Cambiar contraseña">🔑</button>
+                        <button class="btn-logout" id="btnLogout" title="Cerrar sesión">Salir ↗</button>
+                    </div>
+                    <button class="btn-theme" id="btnTheme" title="Cambiar tema"><span id="themeIcon">🌙</span></button>
+                </div>
+            </div>
+        </header>
+
+        <main class="container">
+            <!-- ===== SERVICIOS ===== -->
+            <div class="tab-content active" id="contentServicios">
+                <section class="dashboard">
+                    <div class="metric-card"><span class="metric-icon">📋</span>
+                        <div class="metric-info"><span class="metric-value" id="totalServicios">0</span><span
+                                class="metric-label">Total Servicios</span></div>
+                    </div>
+                    <div class="metric-card metric-danger"><span class="metric-icon">🔴</span>
+                        <div class="metric-info"><span class="metric-value" id="totalVencidos">0</span><span
+                                class="metric-label">Vencidos</span></div>
+                    </div>
+                    <div class="metric-card metric-warning"><span class="metric-icon">🟡</span>
+                        <div class="metric-info"><span class="metric-value" id="totalProximos">0</span><span
+                                class="metric-label">Próx. 30 días</span></div>
+                    </div>
+                    <div class="metric-card metric-success"><span class="metric-icon">🟢</span>
+                        <div class="metric-info"><span class="metric-value" id="totalAlDia">0</span><span
+                                class="metric-label">Al Día</span></div>
+                    </div>
+                </section>
+                <section class="toolbar">
+                    <div class="filters">
+                        <input type="text" id="filterNombre" class="input-field" placeholder="Buscar cliente...">
+                        <select id="filterTipo" class="input-field">
+                            <option value="">Todos los tipos</option>
+                            <option value="hosting">Hosting</option>
+                            <option value="correo">Correo Empresarial</option>
+                            <option value="licencia">Licencia de Software</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                        <select id="filterEstado" class="input-field">
+                            <option value="">Todos los estados</option>
+                            <option value="vencido">Vencido</option>
+                            <option value="proximo">Próximo a vencer</option>
+                            <option value="aldia">Al día</option>
+                        </select>
+                    </div>
+                    <button class="btn-primary" id="btnNuevoServicio"><span>＋</span> Nuevo Servicio</button>
+                </section>
+                <section class="table-container">
+                    <table class="services-table" id="tablaServicios">
+                        <thead>
+                            <tr>
+                                <th>Estado</th>
+                                <th>Cliente</th>
+                                <th>Tipo</th>
+                                <th>Período</th>
+                                <th>Vencimiento</th>
+                                <th>Días</th>
+                                <th>Monto</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyServicios"></tbody>
+                    </table>
+                    <div class="empty-state" id="emptyServicios"><span class="empty-icon">📭</span>
+                        <p>No hay servicios registrados</p>
+                        <p class="empty-sub">Haz clic en "Nuevo Servicio" para comenzar</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ===== CLIENTES ===== -->
+            <div class="tab-content" id="contentClientes">
+                <section class="toolbar">
+                    <div class="section-title">
+                        <h2>👥 Gestión de Clientes</h2>
+                        <p class="section-subtitle">Administra la información de tus clientes</p>
+                    </div>
+                    <button class="btn-primary" id="btnNuevoCliente"><span>＋</span> Nuevo Cliente</button>
+                </section>
+                <section class="toolbar" style="margin-top:-10px">
+                    <div class="filters"><input type="text" id="filterClientes" class="input-field"
+                            placeholder="Buscar por nombre, email o empresa..."></div>
+                </section>
+                <section class="table-container">
+                    <table class="services-table" id="tablaClientes">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Teléfono</th>
+                                <th>Empresa</th>
+                                <th>Servicios</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyClientes"></tbody>
+                    </table>
+                    <div class="empty-state" id="emptyClientes"><span class="empty-icon">👥</span>
+                        <p>No hay clientes registrados</p>
+                        <p class="empty-sub">Agrega clientes para asociarlos a los servicios</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ===== PRODUCTOS ===== -->
+            <div class="tab-content" id="contentProductos">
+                <section class="toolbar">
+                    <div class="section-title">
+                        <h2>📦 Catálogo de Productos y Servicios</h2>
+                        <p class="section-subtitle">Gestiona los tipos de productos y servicios que ofreces</p>
+                    </div>
+                    <button class="btn-primary" id="btnNuevoProducto"><span>＋</span> Nuevo Producto</button>
+                </section>
+                <section class="table-container">
+                    <table class="services-table" id="tablaProductos">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Categoría</th>
+                                <th>Precio USD</th>
+                                <th>Precio CRC</th>
+                                <th>Período</th>
+                                <th>Descripción</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyProductos"></tbody>
+                    </table>
+                    <div class="empty-state" id="emptyProductos"><span class="empty-icon">📦</span>
+                        <p>No hay productos registrados</p>
+                        <p class="empty-sub">Agrega productos para asociarlos a servicios</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ===== ALERTAS ===== -->
+            <div class="tab-content" id="contentAlertas">
+                <section class="toolbar">
+                    <div class="section-title">
+                        <h2>🔔 Centro de Alertas y Recordatorios</h2>
+                        <p class="section-subtitle">Envía correos y mensajes de WhatsApp de recordatorio</p>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <button class="btn-sm btn-whatsapp" id="btnWaSendAll"
+                            title="Enviar todas las alertas a tu WhatsApp">📢 Enviar Resumen a WhatsApp</button>
+                        <div class="alert-legend">
+                            <span class="legend-item"><span class="legend-dot danger"></span> 2 días o menos</span>
+                            <span class="legend-item"><span class="legend-dot warning"></span> 7 días o menos</span>
+                            <span class="legend-item"><span class="legend-dot info"></span> 15 días o menos</span>
+                        </div>
+                    </div>
+                </section>
+                <section class="table-container">
+                    <table class="services-table" id="tablaAlertas">
+                        <thead>
+                            <tr>
+                                <th>Urgencia</th>
+                                <th>Cliente</th>
+                                <th>Email</th>
+                                <th>Servicio</th>
+                                <th>Vence</th>
+                                <th>Días</th>
+                                <th>Monto</th>
+                                <th>Email</th>
+                                <th>WhatsApp</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyAlertas"></tbody>
+                    </table>
+                    <div class="empty-state" id="emptyAlertas"><span class="empty-icon">✅</span>
+                        <p>Sin alertas pendientes</p>
+                        <p class="empty-sub">No hay servicios por vencer en los próximos 15 días</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ===== CONFIG ===== -->
+            <div class="tab-content" id="contentConfig">
+                <section class="toolbar">
+                    <div class="section-title">
+                        <h2>⚙️ Configuración de Correo (EmailJS)</h2>
+                        <p class="section-subtitle">Configura EmailJS para enviar correos directamente desde la
+                            plataforma. <a href="https://www.emailjs.com/" target="_blank"
+                                style="color:var(--color-accent)">Crear cuenta gratis →</a></p>
+                    </div>
+                </section>
+                <section class="config-card">
+                    <div class="config-steps">
+                        <div class="step"><span class="step-num">1</span>
+                            <div><strong>Crear cuenta en EmailJS</strong>
+                                <p>Registrate gratis en <a href="https://www.emailjs.com/signup"
+                                        target="_blank">emailjs.com</a> (200 emails/mes gratis)</p>
+                            </div>
+                        </div>
+                        <div class="step"><span class="step-num">2</span>
+                            <div><strong>Conectar servicio de email</strong>
+                                <p>En EmailJS Dashboard → Email Services → Conecta tu Gmail, Outlook, etc.</p>
+                            </div>
+                        </div>
+                        <div class="step"><span class="step-num">3</span>
+                            <div><strong>Crear plantilla de correo</strong>
+                                <p>En Email Templates → Crear plantilla. Usa estas variables: <code>{{to_email}}</code>,
+                                    <code>{{to_name}}</code>, <code>{{subject}}</code>, <code>{{message}}</code>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="step"><span class="step-num">4</span>
+                            <div><strong>Copiar las credenciales aquí abajo</strong>
+                                <p>Encuentra tu Public Key en Account → General. Service ID y Template ID en sus
+                                    secciones.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <form id="formConfig" class="config-form">
+                        <div class="form-row">
+                            <div class="form-group"><label for="ejsPublicKey">Public Key <span
+                                        class="required">*</span></label><input type="text" id="ejsPublicKey"
+                                    class="input-field" placeholder="Ej: abcDE12345..."></div>
+                            <div class="form-group"><label for="ejsServiceId">Service ID <span
+                                        class="required">*</span></label><input type="text" id="ejsServiceId"
+                                    class="input-field" placeholder="Ej: service_abc123"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label for="ejsTemplateId">Template ID <span
+                                        class="required">*</span></label><input type="text" id="ejsTemplateId"
+                                    class="input-field" placeholder="Ej: template_xyz789"></div>
+                            <div class="form-group"><label for="ejsFromName">Nombre del Remitente</label><input
+                                    type="text" id="ejsFromName" class="input-field" placeholder="Ej: Mi Empresa SRL">
+                            </div>
+                        </div>
+                        <div class="modal-footer" style="padding-top:16px">
+                            <button type="button" class="btn-secondary" id="btnTestEmail">📧 Enviar Prueba</button>
+                            <button type="submit" class="btn-primary">💾 Guardar Configuración</button>
+                        </div>
+                    </form>
+                    <div class="config-status" id="configStatus"></div>
+                </section>
+
+                <!-- WhatsApp Config -->
+                <section class="config-card" style="margin-top:24px">
+                    <h3 style="margin-bottom:16px;font-size:1.05rem"><span style="font-size:1.3rem">📨</span>
+                        Notificaciones por WhatsApp (CallMeBot)</h3>
+                    <div class="config-steps">
+                        <div class="step"><span class="step-num" style="background:#25D366">1</span>
+                            <div><strong>Agrega al bot a tus contactos</strong>
+                                <p>Guarda el número <strong>+34 644 71 88 82</strong> en tus contactos como "CallMeBot"
+                                </p>
+                            </div>
+                        </div>
+                        <div class="step"><span class="step-num" style="background:#25D366">2</span>
+                            <div><strong>Envía un mensaje al bot</strong>
+                                <p>Desde tu WhatsApp, envía al bot: <code>I allow callmebot to send me messages</code>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="step"><span class="step-num" style="background:#25D366">3</span>
+                            <div><strong>Recibirás tu API Key</strong>
+                                <p>El bot te responderá con tu clave. Cópiala aquí abajo.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <form id="formWaConfig" class="config-form">
+                        <div class="form-row">
+                            <div class="form-group"><label for="waPhone">Número de WhatsApp <span
+                                        class="required">*</span></label><input type="text" id="waPhone"
+                                    class="input-field" placeholder="Ej: +50688881234 (con código de país)"></div>
+                            <div class="form-group"><label for="waApiKey">API Key <span
+                                        class="required">*</span></label><input type="text" id="waApiKey"
+                                    class="input-field" placeholder="Ej: 1234567"></div>
+                        </div>
+                        <div class="modal-footer" style="padding-top:16px">
+                            <button type="button" class="btn-secondary" id="btnTestWa">📨 Enviar Prueba</button>
+                            <button type="submit" class="btn-primary">💾 Guardar WhatsApp</button>
+                        </div>
+                    </form>
+                    <div class="config-status" id="waConfigStatus"></div>
+                </section>
+            </div>
+        </main>
+
+        <!-- ===== MODAL: Servicio ===== -->
+        <div class="modal-overlay" id="modalServicioOverlay">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2 id="modalServicioTitle">Nuevo Servicio</h2><button class="btn-close"
+                        onclick="closeModal('modalServicioOverlay')">✕</button>
+                </div>
+                <form id="formServicio" novalidate>
+                    <input type="hidden" id="servicioId">
+                    <div class="form-group">
+                        <label for="srvCliente">Cliente <span class="required">*</span></label>
+                        <select id="srvCliente" class="input-field" required>
+                            <option value="">Seleccionar cliente...</option>
+                        </select>
+                        <span class="error-msg">Seleccione un cliente</span>
+                    </div>
+                    <div class="client-preview" id="clientPreview" style="display:none">
+                        <span id="cpName">—</span> · <span id="cpEmail" style="color:var(--color-text-muted)">—</span>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label for="srvProducto">Producto Asociado</label><select
+                                id="srvProducto" class="input-field">
+                                <option value="">Sin producto</option>
+                            </select></div>
+                        <div class="form-group"><label for="srvTipo">Tipo de Servicio <span
+                                    class="required">*</span></label><select id="srvTipo" class="input-field" required>
+                                <option value="">Seleccionar...</option>
+                                <option value="hosting">Hosting</option>
+                                <option value="correo">Correo Empresarial</option>
+                                <option value="licencia">Licencia de Software</option>
+                                <option value="otro">Otro</option>
+                            </select><span class="error-msg">Campo obligatorio</span></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label for="srvPeriodo">Período <span
+                                    class="required">*</span></label><select id="srvPeriodo" class="input-field"
+                                required>
+                                <option value="">Seleccionar...</option>
+                                <option value="mensual">Mensual</option>
+                                <option value="trimestral">Trimestral</option>
+                                <option value="semestral">Semestral</option>
+                                <option value="anual">Anual</option>
+                                <option value="bienal">Bienal</option>
+                                <option value="otro">Otro</option>
+                            </select><span class="error-msg">Campo obligatorio</span></div>
+                        <div class="form-group"><label for="srvFecha">Fecha de Vencimiento <span
+                                    class="required">*</span></label><input type="date" id="srvFecha"
+                                class="input-field" required><span class="error-msg">Campo obligatorio</span></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label for="srvMoneda">Moneda</label><select id="srvMoneda"
+                                class="input-field">
+                                <option value="USD">USD - Dólar</option>
+                                <option value="CRC">CRC - Colón</option>
+                            </select></div>
+                        <div class="form-group"><label for="srvMonto">Monto <span
+                                    class="required">*</span></label><input type="number" id="srvMonto"
+                                class="input-field" min="0" step="0.01" required><span class="error-msg">Campo
+                                obligatorio</span></div>
+                    </div>
+                    <div class="conversion-preview" id="srvConversion" style="display:none"><span
+                            id="srvConvText"></span></div>
+                    <div class="form-group"><label for="srvNotas">Notas</label><textarea id="srvNotas"
+                            class="input-field" rows="2"></textarea></div>
+                    <div class="modal-footer"><button type="button" class="btn-secondary"
+                            onclick="closeModal('modalServicioOverlay')">Cancelar</button><button type="submit"
+                            class="btn-primary">Guardar</button></div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ===== MODAL: Cliente ===== -->
+        <div class="modal-overlay" id="modalClienteOverlay">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2 id="modalClienteTitle">Nuevo Cliente</h2><button class="btn-close"
+                        onclick="closeModal('modalClienteOverlay')">✕</button>
+                </div>
+                <form id="formCliente" novalidate>
+                    <input type="hidden" id="clienteId">
+                    <div class="form-row">
+                        <div class="form-group"><label for="cliNombre">Nombre Completo <span
+                                    class="required">*</span></label><input type="text" id="cliNombre"
+                                class="input-field" required><span class="error-msg">Campo obligatorio</span></div>
+                        <div class="form-group"><label for="cliEmpresa">Empresa</label><input type="text"
+                                id="cliEmpresa" class="input-field"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label for="cliEmail">Email <span
+                                    class="required">*</span></label><input type="email" id="cliEmail"
+                                class="input-field" required><span class="error-msg">Email inválido</span></div>
+                        <div class="form-group"><label for="cliTelefono">Teléfono</label><input type="tel"
+                                id="cliTelefono" class="input-field"></div>
+                    </div>
+                    <div class="form-group"><label for="cliDireccion">Dirección</label><input type="text"
+                            id="cliDireccion" class="input-field"></div>
+                    <div class="form-group"><label for="cliNotas">Notas</label><textarea id="cliNotas"
+                            class="input-field" rows="2"></textarea></div>
+                    <div class="modal-footer"><button type="button" class="btn-secondary"
+                            onclick="closeModal('modalClienteOverlay')">Cancelar</button><button type="submit"
+                            class="btn-primary">Guardar</button></div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ===== MODAL: Producto ===== -->
+        <div class="modal-overlay" id="modalProductoOverlay">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2 id="modalProductoTitle">Nuevo Producto</h2><button class="btn-close"
+                        onclick="closeModal('modalProductoOverlay')">✕</button>
+                </div>
+                <form id="formProducto" novalidate>
+                    <input type="hidden" id="productoId">
+                    <div class="form-group"><label for="prodNombre">Nombre <span class="required">*</span></label><input
+                            type="text" id="prodNombre" class="input-field" placeholder="Ej: Hosting Premium 10GB"
+                            required><span class="error-msg">Campo obligatorio</span></div>
+                    <div class="form-row">
+                        <div class="form-group"><label for="prodCategoria">Categoría <span
+                                    class="required">*</span></label><select id="prodCategoria" class="input-field"
+                                required>
+                                <option value="">Seleccionar...</option>
+                                <option value="hosting">Hosting</option>
+                                <option value="correo">Correo Empresarial</option>
+                                <option value="licencia">Licencia de Software</option>
+                                <option value="otro">Otro</option>
+                            </select><span class="error-msg">Campo obligatorio</span></div>
+                        <div class="form-group"><label for="prodPeriodo">Período</label><select id="prodPeriodo"
+                                class="input-field">
+                                <option value="">Seleccionar...</option>
+                                <option value="mensual">Mensual</option>
+                                <option value="trimestral">Trimestral</option>
+                                <option value="semestral">Semestral</option>
+                                <option value="anual">Anual</option>
+                                <option value="bienal">Bienal</option>
+                            </select></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label for="prodMoneda">Moneda</label><select id="prodMoneda"
+                                class="input-field">
+                                <option value="USD">USD</option>
+                                <option value="CRC">CRC</option>
+                            </select></div>
+                        <div class="form-group"><label for="prodPrecio">Precio <span
+                                    class="required">*</span></label><input type="number" id="prodPrecio"
+                                class="input-field" min="0" step="0.01" required><span class="error-msg">Campo
+                                obligatorio</span></div>
+                    </div>
+                    <div class="conversion-preview" id="prodConversion" style="display:none"><span
+                            id="prodConvText"></span></div>
+                    <div class="form-group"><label for="prodDesc">Descripción</label><textarea id="prodDesc"
+                            class="input-field" rows="2"></textarea></div>
+                    <div class="modal-footer"><button type="button" class="btn-secondary"
+                            onclick="closeModal('modalProductoOverlay')">Cancelar</button><button type="submit"
+                            class="btn-primary">Guardar</button></div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ===== MODAL: Confirmar ===== -->
+        <div class="modal-overlay" id="confirmOverlay">
+            <div class="modal modal-confirm">
+                <div class="modal-header">
+                    <h2>Confirmar Eliminación</h2>
+                </div>
+                <p class="confirm-text" id="confirmText">¿Eliminar este elemento?</p>
+                <div class="modal-footer"><button class="btn-secondary" id="btnCancelDel">Cancelar</button><button
+                        class="btn-danger" id="btnConfirmDel">Eliminar</button></div>
+            </div>
+        </div>
+
+        <!-- ===== MODAL: Email Preview ===== -->
+        <div class="modal-overlay" id="emailOverlay">
+            <div class="modal modal-email">
+                <div class="modal-header">
+                    <h2>📧 Enviar Recordatorio</h2><button class="btn-close"
+                        onclick="closeModal('emailOverlay')">✕</button>
+                </div>
+                <div class="email-preview">
+                    <div class="email-field"><label>Para:</label><span id="emailTo">—</span></div>
+                    <div class="email-field"><label>Asunto:</label><span id="emailSubject">—</span></div>
+                    <div class="email-body" id="emailBody"></div>
+                </div>
+                <div class="modal-footer" style="padding:16px 24px 24px">
+                    <button class="btn-secondary" onclick="closeModal('emailOverlay')">Cancelar</button>
+                    <button class="btn-primary" id="btnSendEmail">📧 Enviar Correo</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== MODAL: Cambiar Contraseña ===== -->
+        <div class="modal-overlay" id="passOverlay">
+            <div class="modal" style="max-width:440px">
+                <div class="modal-header">
+                    <h2>🔑 Cambiar Contraseña</h2><button class="btn-close"
+                        onclick="closeModal('passOverlay')">✕</button>
+                </div>
+                <form id="formChangePass" novalidate>
+                    <div class="form-group">
+                        <label for="cpCurrent">Contraseña Actual <span class="required">*</span></label>
+                        <div class="pass-wrapper">
+                            <input type="password" id="cpCurrent" class="input-field" placeholder="Tu contraseña actual"
+                                required>
+                            <button type="button" class="btn-toggle-pass"
+                                onclick="togglePass('cpCurrent',this)">👁️</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="cpNew">Nueva Contraseña <span class="required">*</span></label>
+                        <div class="pass-wrapper">
+                            <input type="password" id="cpNew" class="input-field" placeholder="Mínimo 6 caracteres"
+                                required>
+                            <button type="button" class="btn-toggle-pass"
+                                onclick="togglePass('cpNew',this)">👁️</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="cpConfirm">Confirmar Nueva Contraseña <span class="required">*</span></label>
+                        <div class="pass-wrapper">
+                            <input type="password" id="cpConfirm" class="input-field"
+                                placeholder="Repite la nueva contraseña" required>
+                            <button type="button" class="btn-toggle-pass"
+                                onclick="togglePass('cpConfirm',this)">👁️</button>
+                        </div>
+                    </div>
+                    <div class="auth-error" id="cpError"></div>
+                    <div class="modal-footer"><button type="button" class="btn-secondary"
+                            onclick="closeModal('passOverlay')">Cancelar</button><button type="submit"
+                            class="btn-primary">Guardar</button></div>
+                </form>
+            </div>
+        </div>
+
+    </div><!-- /appContainer -->
+
+    <div class="toast-container" id="toastContainer"></div>
+    <script src="auth.js"></script>
+    <script src="core.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
