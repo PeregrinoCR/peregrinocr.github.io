@@ -9,6 +9,8 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 </head>
 
 <body>
@@ -104,10 +106,6 @@
                         <input type="text" id="filterNombre" class="input-field" placeholder="Buscar cliente...">
                         <select id="filterTipo" class="input-field">
                             <option value="">Todos los tipos</option>
-                            <option value="hosting">Hosting</option>
-                            <option value="correo">Correo Empresarial</option>
-                            <option value="licencia">Licencia de Software</option>
-                            <option value="otro">Otro</option>
                         </select>
                         <select id="filterEstado" class="input-field">
                             <option value="">Todos los estados</option>
@@ -182,7 +180,10 @@
                         <h2>📦 Registrar Servicio</h2>
                         <p class="section-subtitle">Registra los servicios técnicos que ofreces a tus clientes</p>
                     </div>
-                    <button class="btn-primary" id="btnNuevoProducto"><span>＋</span> Nuevo Servicio</button>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <button class="btn-primary" id="btnNuevoProducto"><span>＋</span> Nuevo Servicio</button>
+                        <button class="btn-secondary" id="btnGestionCategorias">🏷️ Categorías</button>
+                    </div>
                 </section>
                 <section class="table-container">
                     <table class="services-table" id="tablaProductos">
@@ -348,6 +349,36 @@
                     </form>
                     <div class="config-status" id="waConfigStatus"></div>
                 </section>
+                <!-- ===== FIREBASE CONFIG ===== -->
+                <section class="config-card" style="margin-top:24px">
+                    <h3 style="margin-bottom:16px;font-size:1.05rem"><span style="font-size:1.3rem">☁️</span>
+                        Sincronización en la Nube (Firebase)</h3>
+                    <p style="color:var(--color-text-muted);font-size:.85rem;margin-bottom:16px;line-height:1.5">
+                        Conecta una base de datos Firestore para que tus datos persistan en la nube,
+                        accesibles desde cualquier dispositivo. Los datos se sincronizan automáticamente.
+                        <a href="https://console.firebase.google.com" target="_blank"
+                            style="color:var(--color-accent)">Ir a Firebase Console →</a>
+                    </p>
+                    <form id="formFirebase" class="config-form">
+                        <div class="form-row">
+                            <div class="form-group"><label for="fbApiKey">apiKey <span class="required">*</span></label><input type="password" id="fbApiKey" class="input-field" placeholder="AIzaSy..."></div>
+                            <div class="form-group"><label for="fbProjectId">projectId <span class="required">*</span></label><input type="text" id="fbProjectId" class="input-field" placeholder="tu-proyecto-123"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label for="fbAuthDomain">authDomain</label><input type="text" id="fbAuthDomain" class="input-field" placeholder="tu-proyecto.firebaseapp.com"></div>
+                            <div class="form-group"><label for="fbStorageBucket">storageBucket</label><input type="text" id="fbStorageBucket" class="input-field" placeholder="tu-proyecto.appspot.com"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label for="fbMsgSenderId">messagingSenderId</label><input type="text" id="fbMsgSenderId" class="input-field" placeholder="123456789"></div>
+                            <div class="form-group"><label for="fbAppId">appId</label><input type="text" id="fbAppId" class="input-field" placeholder="1:123..."></div>
+                        </div>
+                        <div class="modal-footer" style="padding-top:16px">
+                            <button type="button" class="btn-secondary" id="btnSyncFirebase">🔄 Sincronizar Ahora</button>
+                            <button type="submit" class="btn-primary">💾 Guardar y Conectar</button>
+                        </div>
+                    </form>
+                    <div class="config-status" id="fbConfigStatus"></div>
+                </section>
             </div>
         </main>
 
@@ -378,10 +409,6 @@
                         <div class="form-group"><label for="srvTipo">Tipo de Servicio <span
                                     class="required">*</span></label><select id="srvTipo" class="input-field" required>
                                 <option value="">Seleccionar...</option>
-                                <option value="hosting">Hosting</option>
-                                <option value="correo">Correo Empresarial</option>
-                                <option value="licencia">Licencia de Software</option>
-                                <option value="otro">Otro</option>
                             </select><span class="error-msg">Campo obligatorio</span></div>
                     </div>
                     <div class="form-row">
@@ -473,10 +500,6 @@
                                     class="required">*</span></label><select id="prodCategoria" class="input-field"
                                 required>
                                 <option value="">Seleccionar...</option>
-                                <option value="hosting">Hosting</option>
-                                <option value="correo">Correo Empresarial</option>
-                                <option value="licencia">Licencia de Software</option>
-                                <option value="otro">Otro</option>
                             </select><span class="error-msg">Campo obligatorio</span></div>
                         <div class="form-group"><label for="prodPeriodo">Período</label><select id="prodPeriodo"
                                 class="input-field">
@@ -506,6 +529,32 @@
                     <div class="modal-footer"><button type="button" class="btn-secondary"
                             onclick="closeModal('modalProductoOverlay')">Cancelar</button><button type="submit"
                             class="btn-primary">Guardar</button></div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ===== MODAL: Categorias ===== -->
+        <div class="modal-overlay" id="modalCategoriaOverlay">
+            <div class="modal" style="max-width:480px">
+                <div class="modal-header">
+                    <h2 id="modalCatTitle">Nueva Categoría</h2><button class="btn-close"
+                        onclick="closeModal('modalCategoriaOverlay')">✕</button>
+                </div>
+                <form id="formCategoria" novalidate>
+                    <input type="hidden" id="catId">
+                    <div class="form-group">
+                        <label for="catNombre">Nombre de la Categoría <span class="required">*</span></label>
+                        <input type="text" id="catNombre" class="input-field" placeholder="Ej: Dominios, VPS, SSL..." required>
+                        <span class="error-msg">Campo obligatorio</span>
+                    </div>
+                    <div class="modal-footer" style="padding-bottom:16px;border-bottom:1px solid var(--color-border)">
+                        <button type="button" class="btn-secondary" onclick="closeModal('modalCategoriaOverlay')">Cerrar</button>
+                        <button type="submit" class="btn-primary">Guardar</button>
+                    </div>
+                    <div style="margin-top:16px">
+                        <label style="font-size:.82rem;font-weight:600;color:var(--color-text-secondary);display:block;margin-bottom:8px">Categorías Existentes</label>
+                        <div id="catList"></div>
+                    </div>
                 </form>
             </div>
         </div>

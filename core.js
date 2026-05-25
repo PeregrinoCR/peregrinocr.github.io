@@ -1,17 +1,30 @@
 /* ===== Data Layer ===== */
-const KEYS = { srv: 'ren_servicios', cli: 'ren_clientes', prod: 'ren_productos', ex: 'ren_exchange', ejs: 'ren_emailjs', wa: 'ren_whatsapp' };
+const KEYS = { srv: 'ren_servicios', cli: 'ren_clientes', prod: 'ren_productos', ex: 'ren_exchange', ejs: 'ren_emailjs', wa: 'ren_whatsapp', cat: 'ren_categorias' };
+const FIREBASE_CFG_KEY = 'ren_firebase_config';
 const load = k => { try { return JSON.parse(localStorage.getItem(k)) || []; } catch { return []; } };
-const save = (k, d) => { try { localStorage.setItem(k, JSON.stringify(d)); } catch(e) { console.error('Error al guardar en localStorage:', e); toast('Error al guardar datos: espacio en almacenamiento agotado', 'error'); } };
+let _syncQ = Promise.resolve();
+const save = (k, d) => { try { localStorage.setItem(k, JSON.stringify(d)); if(firebaseReady && Array.isArray(d)) syncToFirestore(k,d); } catch(e) { console.error('Error al guardar en localStorage:', e); toast('Error al guardar datos: espacio en almacenamiento agotado', 'error'); } };
 const gid = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 const $ = id => document.getElementById(id);
 
-let servicios = load(KEYS.srv);
-let clientes = load(KEYS.cli);
-let productos = load(KEYS.prod);
+let servicios = [];
+let clientes = [];
+let productos = [];
 let tc = { venta: 0, compra: 0 };
 let delId = null, delType = '';
+let categorias = [];
+let TL = {};
+let firestore = null, firebaseReady = false;
 
-const TL = { hosting:'Hosting', correo:'Correo Emp.', licencia:'Licencia SW', otro:'Otro' };
+const DEFAULT_CATEGORIES = [
+    { id:'hosting', name:'Hosting' },
+    { id:'correo', name:'Correo Emp.' },
+    { id:'licencia', name:'Licencia SW' },
+    { id:'otro', name:'Otro' }
+];
+function initCategorias(){categorias=load(KEYS.cat);if(!categorias.length){categorias=DEFAULT_CATEGORIES.map(c=>({...c}));save(KEYS.cat,categorias);}rebuildTL();}
+function rebuildTL(){TL={};categorias.forEach(c=>{TL[c.id]=c.name;});}
+function slugify(t){return t.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')||'sin_nombre';}
 const PL = { mensual:'Mensual', trimestral:'Trimestral', semestral:'Semestral', anual:'Anual', bienal:'Bienal', otro:'Otro' };
 
 /* Helpers */
@@ -50,6 +63,14 @@ function popProducts() {
     s.value=v;
 }
 
+/* ===== Firebase / Cloud Sync ===== */
+function getFirebaseConfig(){try{return JSON.parse(localStorage.getItem(FIREBASE_CFG_KEY))||null;}catch{return null;}}
+function initFirebase(){const c=getFirebaseConfig();if(!c||!c.projectId)return false;try{if(!firebase.apps.length)firebase.initializeApp(c);firestore=firebase.firestore();firebaseReady=true;return true;}catch(e){console.error('Firebase init error:',e);firebaseReady=false;return false;}}
+async function asyncLoadFromStore(k){if(firebaseReady)try{const s=await firestore.collection(k).get();if(!s.empty){const d=[];s.forEach(doc=>d.push({id:doc.id,...doc.data()}));localStorage.setItem(k,JSON.stringify(d));return d;}}catch(e){console.error('Firestore read error:',e);}return load(k);}
+async function syncToFirestore(k,d){if(!firebaseReady||!firestore||!Array.isArray(d))return;_syncQ=_syncQ.then(async()=>{try{const c=firestore.collection(k),s=await c.get(),si=new Set,li=new Set(d.map(i=>i.id));s.forEach(doc=>si.add(doc.id));const b=firestore.batch();d.forEach(i=>{const{id,...r}=i;b.set(c.doc(id),r);});si.forEach(id=>{if(!li.has(id))b.delete(c.doc(id));});await b.commit();}catch(e){console.error('Sync '+k+':',e.message);}});}
+async function syncAllToFirestore(){if(!firebaseReady){toast('Firebase no está configurado','error');return;}toast('Sincronizando datos...','info');await Promise.all([syncToFirestore(KEYS.srv,servicios),syncToFirestore(KEYS.cli,clientes),syncToFirestore(KEYS.prod,productos),syncToFirestore(KEYS.cat,categorias)]);toast('✅ Datos sincronizados con la nube','success');}
+async function initData(){initFirebase();servicios=await asyncLoadFromStore(KEYS.srv);clientes=await asyncLoadFromStore(KEYS.cli);productos=await asyncLoadFromStore(KEYS.prod);if(firebaseReady){const cd=await asyncLoadFromStore(KEYS.cat);if(cd.length){categorias=cd;rebuildTL();return;}}initCategorias();}
+
 /* ===== WhatsApp via CallMeBot ===== */
 function getWAConfig() {
     const d = localStorage.getItem(KEYS.wa);
@@ -77,3 +98,5 @@ function sendWhatsApp(text) {
         setTimeout(finish, 10000);
     });
 }
+
+/* Init categorias moved to initData() in app.js */

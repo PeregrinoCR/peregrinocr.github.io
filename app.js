@@ -80,10 +80,28 @@ $('formServicio').addEventListener('submit',e=>{
 $('srvCliente').addEventListener('change',updateClientPreview);
 function updateClientPreview(){const c=getClient($('srvCliente').value),p=$('clientPreview');if(c){$('cpName').textContent=c.nombre+(c.empresa?' ('+c.empresa+')':'');$('cpEmail').textContent=c.email||'Sin email';p.style.display='block';}else p.style.display='none';}
 
-$('srvProducto').addEventListener('change',function(){const p=productos.find(x=>x.id===this.value);if(p){$('srvTipo').value=p.categoria||'';$('srvPeriodo').value=p.periodo||'';$('srvMoneda').value=p.moneda||'USD';$('srvMonto').value=p.precio||'';updateSrvConv();}});
+$('srvProducto').addEventListener('change',function(){const p=productos.find(x=>x.id===this.value);if(p){$('srvTipo').value=p.categoria||'';$('srvPeriodo').value=p.periodo||'';$('srvMoneda').value=p.moneda||'USD';$('srvMonto').value=p.precio||'';updateSrvConv();autoCalcFecha();}});
 $('srvMonto').addEventListener('input',updateSrvConv);$('srvMoneda').addEventListener('change',updateSrvConv);
 function updateSrvConv(){const a=parseFloat($('srvMonto').value),c=$('srvMoneda').value;if(a>0&&tc.venta){const r=cv(a,c,c==='USD'?'CRC':'USD');if(r!==null){$('srvConvText').textContent='≈ '+fm(r,c==='USD'?'CRC':'USD');$('srvConversion').style.display='block';return;}}$('srvConversion').style.display='none';}
 
+/* Auto-calc fecha de vencimiento según período */
+function autoCalcFecha(){
+    const p=$('srvPeriodo').value;
+    if(!p||p==='otro')return;
+    const now=new Date();now.setHours(0,0,0,0);
+    switch(p){
+        case 'mensual':now.setMonth(now.getMonth()+1);break;
+        case 'trimestral':now.setMonth(now.getMonth()+3);break;
+        case 'semestral':now.setMonth(now.getMonth()+6);break;
+        case 'anual':now.setFullYear(now.getFullYear()+1);break;
+        case 'bienal':now.setFullYear(now.getFullYear()+2);break;
+        default:return;
+    }
+    const y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0'),d=String(now.getDate()).padStart(2,'0');
+    $('srvFecha').value=`${y}-${m}-${d}`;
+}
+
+$('srvPeriodo').addEventListener('change',autoCalcFecha);
 $('filterNombre').addEventListener('input',renderServicios);$('filterTipo').addEventListener('change',renderServicios);$('filterEstado').addEventListener('change',renderServicios);
 
 /* ==================== CLIENTES ==================== */
@@ -173,6 +191,64 @@ $('formProducto').addEventListener('submit',e=>{
 $('prodPrecio').addEventListener('input',updateProdConv);$('prodMoneda').addEventListener('change',updateProdConv);
 function updateProdConv(){const a=parseFloat($('prodPrecio').value),c=$('prodMoneda').value;if(a>0&&tc.venta){const r=cv(a,c,c==='USD'?'CRC':'USD');if(r!==null){$('prodConvText').textContent='≈ '+fm(r,c==='USD'?'CRC':'USD');$('prodConversion').style.display='block';return;}}$('prodConversion').style.display='none';}
 
+/* ==================== CATEGORIAS ==================== */
+function populateTipoSelects(){
+    const opts=categorias.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    const srv=$('srvTipo');if(srv){const v=srv.value;srv.innerHTML='<option value="">Seleccionar...</option>'+opts;srv.value=v;}
+    const flt=$('filterTipo');if(flt){const v=flt.value;flt.innerHTML='<option value="">Todos los tipos</option>'+opts;flt.value=v;}
+    const prod=$('prodCategoria');if(prod){const v=prod.value;prod.innerHTML='<option value="">Seleccionar...</option>'+opts;prod.value=v;}
+}
+
+function openCatModal(){
+    $('catId').value='';$('catNombre').value='';
+    $('modalCatTitle').textContent='Nueva Categoría';
+    $('formCategoria').querySelectorAll('.form-group').forEach(g=>g.classList.remove('has-error'));
+    renderCatList();$('modalCategoriaOverlay').classList.add('active');$('catNombre').focus();
+}
+
+function renderCatList(){
+    const list=$('catList');
+    if(!categorias.length){list.innerHTML='<p style="color:var(--color-text-muted);text-align:center;padding:20px">No hay categorías. Agrega una arriba.</p>';return;}
+    list.innerHTML=categorias.map(c=>`<div class="cat-item"><span class="cat-name">${esc(c.name)}</span><div class="cell-actions"><button type="button" class="btn-icon edit" title="Editar" onclick="editCat('${c.id}')">✏️</button><button type="button" class="btn-icon delete" title="Eliminar" onclick="confirmDelCat('${c.id}')">🗑️</button></div></div>`).join('');
+}
+
+function editCat(id){
+    const c=categorias.find(x=>x.id===id);if(!c)return;
+    $('catId').value=c.id;$('catNombre').value=c.name;
+    $('modalCatTitle').textContent='Editar Categoría';
+    $('formCategoria').querySelectorAll('.form-group').forEach(g=>g.classList.remove('has-error'));
+    $('catNombre').focus();
+}
+
+function confirmDelCat(id){
+    delId=id;delType='categoria';
+    const c=categorias.find(x=>x.id===id);
+    $('confirmText').textContent=`¿Eliminar la categoría "${c?c.name:''}"? Los servicios y productos existentes no se verán afectados.`;
+    $('confirmOverlay').classList.add('active');
+}
+
+$('btnGestionCategorias').addEventListener('click',openCatModal);
+
+$('formCategoria').addEventListener('submit',e=>{
+    e.preventDefault();
+    const nm=$('catNombre');
+    if(!nm.value.trim()){nm.closest('.form-group').classList.add('has-error');return;}
+    nm.closest('.form-group').classList.remove('has-error');
+    const eid=$('catId').value;
+    if(eid){
+        const i=categorias.findIndex(c=>c.id===eid);
+        if(i!==-1){categorias[i].name=nm.value.trim();toast('Categoría actualizada','success');}
+    }else{
+        const id=slugify(nm.value.trim());
+        if(categorias.find(c=>c.id===id)){toast('Ya existe una categoría con ese nombre','error');return;}
+        categorias.push({id,name:nm.value.trim()});
+        toast('Categoría creada','success');
+    }
+    save(KEYS.cat,categorias);rebuildTL();populateTipoSelects();
+    $('catNombre').value='';$('catId').value='';$('modalCatTitle').textContent='Nueva Categoría';
+    renderCatList();refresh();
+});
+
 /* ==================== DELETE ==================== */
 function confirmDel(id,type){delId=id;delType=type;$('confirmText').textContent=`¿Eliminar este ${type}? Esta acción no se puede deshacer.`;$('confirmOverlay').classList.add('active');}
 $('btnCancelDel').addEventListener('click',()=>{closeModal('confirmOverlay');delId=null;});
@@ -181,7 +257,9 @@ $('btnConfirmDel').addEventListener('click',()=>{
     if(delType==='servicio'){servicios=servicios.filter(s=>s.id!==delId);save(KEYS.srv,servicios);}
     else if(delType==='cliente'){clientes=clientes.filter(c=>c.id!==delId);save(KEYS.cli,clientes);renderClientes();}
     else if(delType==='producto'){productos=productos.filter(p=>p.id!==delId);save(KEYS.prod,productos);renderProductos();}
-    toast(delType.charAt(0).toUpperCase()+delType.slice(1)+' eliminado','success');
+    else if(delType==='categoria'){categorias=categorias.filter(c=>c.id!==delId);save(KEYS.cat,categorias);rebuildTL();populateTipoSelects();renderCatList();}
+    const delLabel={servicio:'Servicio',cliente:'Cliente',producto:'Producto',categoria:'Categoría'}[delType]||delType;
+    toast(delLabel+' eliminado','success');
     closeModal('confirmOverlay');delId=null;refresh();
 });
 
@@ -316,6 +394,41 @@ $('btnTestEmail').addEventListener('click',async()=>{
     }
 });
 
+/* ==================== FIREBASE CONFIG ==================== */
+function loadFirebaseConfig(){
+    const c=getFirebaseConfig();
+    if(!c){return;}
+    $('fbApiKey').value=c.apiKey||'';$('fbProjectId').value=c.projectId||'';
+    $('fbAuthDomain').value=c.authDomain||'';$('fbStorageBucket').value=c.storageBucket||'';
+    $('fbMsgSenderId').value=c.messagingSenderId||'';$('fbAppId').value=c.appId||'';
+    const st=$('fbConfigStatus');
+    if(firebaseReady){st.className='config-status ok';st.textContent='✅ Conectado a Firebase ('+c.projectId+')';st.style.display='block';}
+    else{st.className='config-status err';st.textContent='❌ Error de conexión — verifica las credenciales';st.style.display='block';}
+}
+
+$('formFirebase').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const data={apiKey:$('fbApiKey').value.trim(),authDomain:$('fbAuthDomain').value.trim(),projectId:$('fbProjectId').value.trim(),storageBucket:$('fbStorageBucket').value.trim(),messagingSenderId:$('fbMsgSenderId').value.trim(),appId:$('fbAppId').value.trim()};
+    if(!data.apiKey||!data.projectId){toast('Completa apiKey y projectId','error');return;}
+    save(FIREBASE_CFG_KEY,data);
+    // Re-init Firebase
+    firebaseReady=false;firestore=null;
+    try{if(firebase.apps.length)await firebase.app().delete();}catch(e){}
+    initFirebase();
+    const st=$('fbConfigStatus');
+    if(firebaseReady){
+        st.className='config-status ok';st.textContent='✅ Conectado a Firebase — sincronizando datos...';st.style.display='block';
+        await syncAllToFirestore();
+        st.textContent='✅ Conectado a Firebase ('+data.projectId+') — datos sincronizados';
+        toast('✅ Firebase conectado y datos sincronizados','success');
+    }else{
+        st.className='config-status err';st.textContent='❌ Error: verifica las credenciales';st.style.display='block';
+        toast('Error al conectar Firebase','error');
+    }
+});
+
+$('btnSyncFirebase').addEventListener('click',syncAllToFirestore);
+
 /* ==================== WHATSAPP CONFIG ==================== */
 function loadWAConfig(){
     const c=getWAConfig();if(c){$('waPhone').value=c.phone||'';$('waApiKey').value=c.apikey||'';
@@ -362,12 +475,12 @@ $('btnTheme').addEventListener('click',()=>{
 $('btnRefreshRate').addEventListener('click',()=>{localStorage.removeItem(KEYS.ex);fetchRate();});
 
 /* Close modals on overlay click */
-['modalServicioOverlay','modalClienteOverlay','modalProductoOverlay','confirmOverlay','emailOverlay'].forEach(id=>{
+['modalServicioOverlay','modalClienteOverlay','modalProductoOverlay','modalCategoriaOverlay','confirmOverlay','emailOverlay'].forEach(id=>{
     $(id).addEventListener('click',e=>{if(e.target===$(id))closeModal(id);});
 });
 
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){['modalServicioOverlay','modalClienteOverlay','modalProductoOverlay','confirmOverlay','emailOverlay','passOverlay'].forEach(id=>{if($(id).classList.contains('active'))closeModal(id);});}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){['modalServicioOverlay','modalClienteOverlay','modalProductoOverlay','modalCategoriaOverlay','confirmOverlay','emailOverlay','passOverlay'].forEach(id=>{if($(id).classList.contains('active'))closeModal(id);});}});
 
 /* ==================== INIT ==================== */
 function refresh(){updateDash();renderServicios();renderAlertas();}
-fetchRate();loadConfig();loadWAConfig();refresh();renderClientes();renderProductos();
+(async()=>{await initData();fetchRate();loadConfig();loadWAConfig();loadFirebaseConfig();populateTipoSelects();refresh();renderClientes();renderProductos();})();
