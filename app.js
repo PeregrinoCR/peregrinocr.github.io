@@ -53,12 +53,12 @@ function renderServicios() {
 
 function openSrvModal(title){$('modalServicioTitle').textContent=title;popClients();popProducts();$('formServicio').querySelectorAll('.form-group').forEach(g=>g.classList.remove('has-error'));$('clientPreview').style.display='none';$('srvConversion').style.display='none';$('modalServicioOverlay').classList.add('active');}
 
-$('btnNuevoServicio').addEventListener('click',()=>{$('formServicio').reset();$('servicioId').value='';openSrvModal('Nuevo Servicio');$('srvCliente').focus();});
+$('btnNuevoServicio').addEventListener('click',()=>{$('formServicio').reset();$('servicioId').value='';openSrvModal('Nueva Venta');$('srvCliente').focus();});
 
 function editSrv(id){
     const s=servicios.find(x=>x.id===id);if(!s)return;
     $('servicioId').value=s.id;$('srvCliente').value=s.clienteId||'';$('srvTipo').value=s.tipo;$('srvPeriodo').value=s.periodo;$('srvFecha').value=s.fecha;$('srvMoneda').value=s.moneda||'USD';$('srvMonto').value=s.monto;$('srvNotas').value=s.notas||'';
-    openSrvModal('Editar Servicio');
+    openSrvModal('Editar Venta');
     $('srvProducto').value=s.productoId||'';
     updateClientPreview();updateSrvConv();
 }
@@ -67,7 +67,7 @@ $('formServicio').addEventListener('submit',e=>{
     e.preventDefault();let ok=true;
     [['srvCliente'],['srvTipo'],['srvPeriodo'],['srvFecha'],['srvMonto']].forEach(([id])=>{
         const f=$(id),g=f.closest('.form-group');
-        if(!f.value||!f.value.toString().trim()){g.classList.add('has-error');ok=false;}else g.classList.remove('has-error');
+        if(!f.value.trim()){g.classList.add('has-error');ok=false;}else g.classList.remove('has-error');
     });
     if(!ok)return;
     const data={clienteId:$('srvCliente').value,tipo:$('srvTipo').value,periodo:$('srvPeriodo').value,fecha:$('srvFecha').value,moneda:$('srvMoneda').value,monto:parseFloat($('srvMonto').value),productoId:$('srvProducto').value,notas:$('srvNotas').value.trim()};
@@ -152,17 +152,17 @@ function renderProductos(){
     }).join('');
 }
 
-$('btnNuevoProducto').addEventListener('click',()=>{$('formProducto').reset();$('productoId').value='';$('modalProductoTitle').textContent='Nuevo Producto';$('prodConversion').style.display='none';$('formProducto').querySelectorAll('.form-group').forEach(g=>g.classList.remove('has-error'));$('modalProductoOverlay').classList.add('active');$('prodNombre').focus();});
+$('btnNuevoProducto').addEventListener('click',()=>{$('formProducto').reset();$('productoId').value='';$('modalProductoTitle').textContent='Nuevo Servicio';$('prodConversion').style.display='none';$('formProducto').querySelectorAll('.form-group').forEach(g=>g.classList.remove('has-error'));$('modalProductoOverlay').classList.add('active');$('prodNombre').focus();});
 
 function editProd(id){
     const p=productos.find(x=>x.id===id);if(!p)return;
     $('productoId').value=p.id;$('prodNombre').value=p.nombre;$('prodCategoria').value=p.categoria;$('prodPeriodo').value=p.periodo||'';$('prodMoneda').value=p.moneda||'USD';$('prodPrecio').value=p.precio;$('prodDesc').value=p.descripcion||'';
-    $('modalProductoTitle').textContent='Editar Producto';$('formProducto').querySelectorAll('.form-group').forEach(g=>g.classList.remove('has-error'));$('modalProductoOverlay').classList.add('active');updateProdConv();
+    $('modalProductoTitle').textContent='Editar Servicio';$('formProducto').querySelectorAll('.form-group').forEach(g=>g.classList.remove('has-error'));$('modalProductoOverlay').classList.add('active');updateProdConv();
 }
 
 $('formProducto').addEventListener('submit',e=>{
     e.preventDefault();let ok=true;
-    [['prodNombre'],['prodCategoria'],['prodPrecio']].forEach(([id])=>{const f=$(id),g=f.closest('.form-group');if(!f.value||!f.value.toString().trim()){g.classList.add('has-error');ok=false;}else g.classList.remove('has-error');});
+    [['prodNombre'],['prodCategoria'],['prodPrecio']].forEach(([id])=>{const f=$(id),g=f.closest('.form-group');if(!f.value.trim()){g.classList.add('has-error');ok=false;}else g.classList.remove('has-error');});
     if(!ok)return;
     const data={nombre:$('prodNombre').value.trim(),categoria:$('prodCategoria').value,periodo:$('prodPeriodo').value,moneda:$('prodMoneda').value,precio:parseFloat($('prodPrecio').value),descripcion:$('prodDesc').value.trim()};
     const eid=$('productoId').value;
@@ -218,11 +218,15 @@ async function sendWaAlert(id){
     const s=servicios.find(x=>x.id===id),cli=getClient(s?.clienteId);
     if(!s){toast('Servicio no encontrado','error');return;}
     const d=days(s.fecha),cur=s.moneda||'USD';
+    const altCur=cur==='USD'?'CRC':'USD';
+    const alt=cv(s.monto,cur,altCur);
     const name=cli?cli.nombre:'Cliente';
-    const msg=`⚠️ *ALERTA DE VENCIMIENTO*\n\n👤 Cliente: ${name}\n📦 Servicio: ${TL[s.tipo]||s.tipo}\n📅 Vence: ${fd(s.fecha)} (${d} días)\n💰 Monto: ${fm(s.monto,cur)}\n\n_Enviado desde Control de Renovaciones_`;
+    const montoTexto = s.monto.toFixed(2) + ' ' + cur;
+    const altTexto = alt!==null ? ' (' + alt.toFixed(2) + ' ' + altCur + ')' : '';
+    const msg=`⚠️ *ALERTA DE VENCIMIENTO*\n\n👤 Cliente: ${name}\n📦 Servicio: ${TL[s.tipo]||s.tipo}\n📅 Vence: ${fd(s.fecha)} (${d} dias)\n💰 Monto: ${montoTexto}${altTexto}\n\n---\nEnviado desde Control de Renovaciones`;
     try{
         await sendWhatsApp(msg);
-        toast('📨 Alerta enviada a WhatsApp','success');
+        toast('Alerta enviada a WhatsApp','success');
     }catch(err){toast('Error: '+err.message,'error');}
 }
 
@@ -232,19 +236,22 @@ $('btnWaSendAll').addEventListener('click',async()=>{
     if(!cfg){toast('Configura WhatsApp en ⚙️ Configuración','error');return;}
     const items=getAlerts();
     if(!items.length){toast('No hay alertas pendientes','info');return;}
-    let msg=`🔔 *RESUMEN DE ALERTAS*\n_${new Date().toLocaleDateString('es-CR')}_\n\n`;
+    let msg=`📢 *RESUMEN DE ALERTAS*\n${new Date().toLocaleDateString('es-CR')}\n\n`;
     items.forEach((s,i)=>{
         const d=days(s.fecha),cli=getClient(s.clienteId);
-        const icon=d<=2?'🔴':d<=7?'🟡':'🔵';
-        msg+=`${icon} *${cli?cli.nombre:'—'}*\n   ${TL[s.tipo]||s.tipo} | ${fd(s.fecha)} | ${d}d | ${fm(s.monto,s.moneda||'USD')}\n\n`;
+        const mCur=s.moneda||'USD',mAltCur=mCur==='USD'?'CRC':'USD',mAlt=cv(s.monto,mCur,mAltCur);
+        const ic=d<=2?'🔴':d<=7?'🟡':'🔵';
+        const montoPlain = s.monto.toFixed(2) + ' ' + mCur;
+        const altPlain = mAlt!==null ? ' (≈ ' + mAlt.toFixed(2) + ' ' + mAltCur + ')' : '';
+        msg+=`${ic} *${cli?cli.nombre:'—'}*\n   📦 ${TL[s.tipo]||s.tipo} | 📅 ${fd(s.fecha)} | ⏱ ${d}d | 💰 ${montoPlain}${altPlain}\n\n`;
     });
-    msg+=`_Total: ${items.length} servicio(s) por vencer_`;
+    msg+=`Total: ${items.length} servicio(s) por vencer.\n---\nEnviado desde Control de Renovaciones`;
     const btn=$('btnWaSendAll');btn.disabled=true;btn.textContent='Enviando...';
     try{
         await sendWhatsApp(msg);
-        toast(`📨 Resumen de ${items.length} alerta(s) enviado a WhatsApp`,'success');
+        toast(`Resumen de ${items.length} alerta(s) enviado a WhatsApp`,'success');
     }catch(err){toast('Error: '+err.message,'error');}
-    btn.disabled=false;btn.textContent='📢 Enviar Resumen a WhatsApp';
+    btn.disabled=false;btn.textContent='Enviar Resumen a WhatsApp';
 });
 
 /* ==================== EMAIL ==================== */
@@ -331,8 +338,8 @@ $('btnTestWa').addEventListener('click',async()=>{
     save(KEYS.wa,{phone,apikey});
     const st=$('waConfigStatus');st.className='config-status';st.textContent='📨 Enviando mensaje de prueba...';st.style.display='block';st.style.color='var(--color-text-secondary)';st.style.background='var(--color-background-tertiary)';
     try{
-        await sendWhatsApp('✅ *Control de Renovaciones*\n\nPrueba exitosa. Las notificaciones de WhatsApp están configuradas correctamente. \n_'+new Date().toLocaleString('es-CR')+'_');
-        st.className='config-status ok';st.textContent='✅ Mensaje enviado. Revisa tu WhatsApp (puede tardar unos segundos).';toast('Prueba de WhatsApp enviada','success');
+        await sendWhatsApp('*Control de Renovaciones*\n\nPrueba exitosa. Las notificaciones de WhatsApp estan configuradas correctamente.\n'+new Date().toLocaleString('es-CR'));
+        st.className='config-status ok';st.textContent='Mensaje enviado. Revisa tu WhatsApp (puede tardar unos segundos).';toast('Prueba de WhatsApp enviada','success');
     }catch(err){
         st.className='config-status err';st.textContent='❌ Error: '+err.message;toast('Error en la prueba de WhatsApp','error');
     }

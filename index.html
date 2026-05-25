@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Panel de gestión de renovaciones de servicios">
     <title>Control de Renovaciones</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
@@ -15,7 +16,8 @@
     <div class="login-screen" id="loginScreen">
         <div class="login-card">
             <div class="login-logo">
-                <span class="login-logo-icon">⟳</sp <h1>Control de Renovaciones</h1>
+                <span class="login-logo-icon">⟳</span>
+                    <h1>Control de Renovaciones</h1>
                     <p class="login-subtitle">Gestión de servicios y renovaciones</p>
             </div>
             <form id="formLogin" class="auth-form">
@@ -57,11 +59,10 @@
                         <button class="btn-refresh-rate" id="btnRefreshRate" title="Actualizar">↻</button>
                     </div>
                     <nav class="header-nav">
-                        <button class="nav-tab active" data-tab="servicios">📋 Servicios</button>
-                        <button class="nav-tab" data-tab="clientes">👥 Clientes</button>
-                        <button class="nav-tab" data-tab="productos">📦 Productos</button>
-                        <button class="nav-tab" data-tab="alertas">🔔 Alertas <span class="alert-count" id="alertCount"
-                                style="display:none">0</span></button>
+                        <button class="nav-tab active" data-tab="servicios">📋 Crear Venta</button>
+                        <button class="nav-tab" data-tab="clientes">👥 Registrar Cliente</button>
+                        <button class="nav-tab" data-tab="productos">📦 Registrar Servicio</button>
+                        <button class="nav-tab" data-tab="alertas">🔔<span class="alert-count" id="alertCount" style="display:none">0</span></button>
                         <button class="nav-tab" data-tab="config">⚙️</button>
                     </nav>
                     <div class="user-menu">
@@ -79,8 +80,7 @@
             <div class="tab-content active" id="contentServicios">
                 <section class="dashboard">
                     <div class="metric-card"><span class="metric-icon">📋</span>
-                        <div class="metric-info"><span class="metric-value" id="totalServicios">0</span><span
-                                class="metric-label">Total Servicios</span></div>
+                        <div class="metric-info"><span class="metric-value" id="totalServicios">0</span><span class="metric-label">Total Ventas</span></div>
                     </div>
                     <div class="metric-card metric-danger"><span class="metric-icon">🔴</span>
                         <div class="metric-info"><span class="metric-value" id="totalVencidos">0</span><span
@@ -96,6 +96,10 @@
                     </div>
                 </section>
                 <section class="toolbar">
+                    <div class="section-title">
+                        <h2>📋 Crear Venta</h2>
+                        <p class="section-subtitle">Registra nuevas ventas de servicios a tus clientes</p>
+                    </div>
                     <div class="filters">
                         <input type="text" id="filterNombre" class="input-field" placeholder="Buscar cliente...">
                         <select id="filterTipo" class="input-field">
@@ -107,12 +111,12 @@
                         </select>
                         <select id="filterEstado" class="input-field">
                             <option value="">Todos los estados</option>
-                            <option value="vencido">Vencido</option>
+                            <option value="vencido">Vencido + Crítico</option>
                             <option value="proximo">Próximo a vencer</option>
                             <option value="aldia">Al día</option>
                         </select>
                     </div>
-                    <button class="btn-primary" id="btnNuevoServicio"><span>＋</span> Nuevo Servicio</button>
+                    <button class="btn-primary" id="btnNuevoServicio"><span>＋</span> Nueva Venta</button>
                 </section>
                 <section class="table-container">
                     <table class="services-table" id="tablaServicios">
@@ -131,8 +135,8 @@
                         <tbody id="tbodyServicios"></tbody>
                     </table>
                     <div class="empty-state" id="emptyServicios"><span class="empty-icon">📭</span>
-                        <p>No hay servicios registrados</p>
-                        <p class="empty-sub">Haz clic en "Nuevo Servicio" para comenzar</p>
+                        <p>No hay ventas registradas</p>
+                        <p class="empty-sub">Haz clic en "Nueva Venta" para comenzar</p>
                     </div>
                 </section>
             </div>
@@ -141,10 +145,10 @@
             <div class="tab-content" id="contentClientes">
                 <section class="toolbar">
                     <div class="section-title">
-                        <h2>👥 Gestión de Clientes</h2>
-                        <p class="section-subtitle">Administra la información de tus clientes</p>
+                        <h2>👥 Registrar Cliente</h2>
+                        <p class="section-subtitle">Registra nuevos clientes en el sistema</p>
                     </div>
-                    <button class="btn-primary" id="btnNuevoCliente"><span>＋</span> Nuevo Cliente</button>
+                    <button class="btn-primary" id="btnNuevoCliente"><span>＋</span> Registrar Cliente</button>
                 </section>
                 <section class="toolbar" style="margin-top:-10px">
                     <div class="filters"><input type="text" id="filterClientes" class="input-field"
@@ -175,10 +179,10 @@
             <div class="tab-content" id="contentProductos">
                 <section class="toolbar">
                     <div class="section-title">
-                        <h2>📦 Catálogo de Productos y Servicios</h2>
-                        <p class="section-subtitle">Gestiona los tipos de productos y servicios que ofreces</p>
+                        <h2>📦 Registrar Servicio</h2>
+                        <p class="section-subtitle">Registra los servicios técnicos que ofreces a tus clientes</p>
                     </div>
-                    <button class="btn-primary" id="btnNuevoProducto"><span>＋</span> Nuevo Producto</button>
+                    <button class="btn-primary" id="btnNuevoProducto"><span>＋</span> Nuevo Servicio</button>
                 </section>
                 <section class="table-container">
                     <table class="services-table" id="tablaProductos">
@@ -196,8 +200,8 @@
                         <tbody id="tbodyProductos"></tbody>
                     </table>
                     <div class="empty-state" id="emptyProductos"><span class="empty-icon">📦</span>
-                        <p>No hay productos registrados</p>
-                        <p class="empty-sub">Agrega productos para asociarlos a servicios</p>
+                        <p>No hay servicios registrados en el catálogo</p>
+                        <p class="empty-sub">Agrega servicios técnicos para ofrecerlos a tus clientes</p>
                     </div>
                 </section>
             </div>
@@ -206,8 +210,8 @@
             <div class="tab-content" id="contentAlertas">
                 <section class="toolbar">
                     <div class="section-title">
-                        <h2>🔔 Centro de Alertas y Recordatorios</h2>
-                        <p class="section-subtitle">Envía correos y mensajes de WhatsApp de recordatorio</p>
+                        <h2>🔔 Alertas y Recordatorios</h2>
+                        <p class="section-subtitle">Servicios próximos a vencer — envía recordatorios por correo o WhatsApp</p>
                     </div>
                     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                         <button class="btn-sm btn-whatsapp" id="btnWaSendAll"
@@ -351,7 +355,7 @@
         <div class="modal-overlay" id="modalServicioOverlay">
             <div class="modal">
                 <div class="modal-header">
-                    <h2 id="modalServicioTitle">Nuevo Servicio</h2><button class="btn-close"
+                    <h2 id="modalServicioTitle">Nueva Venta</h2><button class="btn-close"
                         onclick="closeModal('modalServicioOverlay')">✕</button>
                 </div>
                 <form id="formServicio" novalidate>
@@ -456,7 +460,7 @@
         <div class="modal-overlay" id="modalProductoOverlay">
             <div class="modal">
                 <div class="modal-header">
-                    <h2 id="modalProductoTitle">Nuevo Producto</h2><button class="btn-close"
+                    <h2 id="modalProductoTitle">Nuevo Servicio</h2><button class="btn-close"
                         onclick="closeModal('modalProductoOverlay')">✕</button>
                 </div>
                 <form id="formProducto" novalidate>
