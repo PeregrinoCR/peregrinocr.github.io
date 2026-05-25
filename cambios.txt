@@ -1,4 +1,0 @@
-CAMBIOS GESTION DE RENOVACIONES: 
-
-En Nuevo servicio, mostrar automaticamente la fecha de vencimiento segun el periodo que se elija.
-
